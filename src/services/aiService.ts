@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface AIResponse {
   text: string;
@@ -60,13 +60,19 @@ export async function translateResponse(data: any, targetLangCode: string): Prom
 }
 
 export async function getChatResponse(message: string, profile: any, history: { role: 'user' | 'ai', text: string }[] = [], language: string = 'en'): Promise<AIResponse> {
+  console.log("getChatResponse called with:", { message, language });
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY is not defined!");
+  }
   try {
     // 1. Translate user input to English for AI processing
     const englishMessage = language !== 'en' ? await translateText(message, 'en') : message;
+    console.log("Translated message:", englishMessage);
 
     // 2. Process with AI in English
     const historyContext = history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n');
     
+    console.log("Sending request to Gemini...");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `
@@ -106,7 +112,7 @@ export async function getChatResponse(message: string, profile: any, history: { 
           "internal_link": {
             "screen": "insights" | "home" | "community" | "profile",
             "label": "Click here to learn more about [topic]"
-          } (optional)
+          }
         }
         
         EMERGENCY TRIGGER:
@@ -118,10 +124,17 @@ export async function getChatResponse(message: string, profile: any, history: { 
       }
     });
 
-    const aiData = JSON.parse(response.text || "{}");
+    if (!response.text) {
+      console.error("Empty response from AI");
+      throw new Error("Empty response from AI");
+    }
+
+    console.log("Received response from Gemini:", response.text);
+    const aiData = JSON.parse(response.text);
 
     // 3. Translate the AI's response back to the user's selected language
     const translatedData = language !== 'en' ? await translateResponse(aiData, language) : aiData;
+    console.log("Translated response:", translatedData);
 
     return translatedData;
   } catch (error) {
@@ -179,7 +192,7 @@ export async function analyzeRisk(healthData: any, profile: any): Promise<AIResp
   }
 }
 
-export async function analyzeMedicalReport(extractedText: string, language: string = 'en'): Promise<any> {
+export async function analyzeMedicalReport(extractedText: string, profile: any, language: string = 'en'): Promise<any> {
   try {
     const englishText = language !== 'en' ? await translateText(extractedText, 'en') : extractedText;
 
@@ -188,19 +201,29 @@ export async function analyzeMedicalReport(extractedText: string, language: stri
       contents: `
         Analyze the following medical report text for a pregnant patient.
         
+        Patient Profile: ${JSON.stringify(profile)}
+        
         Report Text:
         "${englishText}"
         
         Provide a structured, easy-to-understand summary of the findings.
-        Do not use overly complex medical jargon. Explain things simply.
         
         CRITICAL: Your response must be a JSON object with the following structure:
         {
           "summary": "A 2-3 sentence simple summary of the overall report status.",
+          "vitalsRelation": "A clear section explaining how the report findings relate to the patient's current BP (${profile.bp}) and Sugar (${profile.sugar}) levels. If the report doesn't directly relate, explain how these vitals should be monitored in light of the findings.",
           "findings": ["Key finding 1 (e.g., Blood pressure is normal)", "Key finding 2"],
           "recommendations": ["Actionable recommendation 1", "Actionable recommendation 2"],
-          "riskLevel": "Low" | "Medium" | "High"
+          "riskLevel": "Low" | "Medium" | "High",
+          "hopefulMessage": "A warm, encouraging, and hopeful message for the mother, highlighting the positives and providing reassurance for any concerns."
         }
+        
+        TONE AND STYLE:
+        - Be EXTREMELY supportive and hopeful.
+        - Highlight POSITIVE findings first.
+        - If there are negative findings, explain them in a non-scary, constructive way.
+        - Give hope to the pregnant mother.
+        - Do not use overly complex medical jargon. Explain things simply.
       `,
       config: {
         responseMimeType: "application/json"

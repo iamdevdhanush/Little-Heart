@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2, Heart } from 'lucide-react';
 import { Card, Badge, Section, Button } from '../components/UI';
-import { analyzeMedicalReport } from '../services/aiService';
+import { analyzeMedicalReport, ai } from '../services/aiService';
 import { saveMedicalReport } from '../services/firebaseService';
 
 export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, onClose: () => void }) {
@@ -25,12 +25,49 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
     setError(null);
 
     try {
-      // In a real app, we would upload the file to Firebase Storage and get a URL.
-      // For this hackathon demo, we will simulate reading the file and passing it to Gemini.
-      // We will use a mock text extraction for the demo.
-      const mockExtractedText = "Patient shows slightly elevated blood pressure (135/85). Hemoglobin levels are normal. Fetal heart rate is 145 bpm. No abnormalities detected in ultrasound.";
+      let extractedText = "";
       
-      const analysis = await analyzeMedicalReport(mockExtractedText, user.language);
+      // More robust file type check
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      
+      if (isImage || isPdf) {
+        // Convert file to base64 for Gemini
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+          };
+        });
+        reader.readAsDataURL(file);
+        const base64Data = await base64Promise;
+        
+        // Use Gemini to extract text from image or PDF
+        const visionResponse = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: file.type
+              }
+            },
+            {
+              text: "Extract all medical information from this report. Focus on vitals, test results, and doctor notes. Return only the extracted text."
+            }
+          ]
+        });
+        extractedText = visionResponse.text || "";
+      } else {
+        throw new Error("Unsupported file type. Please upload an image or a PDF.");
+      }
+
+      if (!extractedText) {
+        throw new Error("Could not extract text from the report. Please ensure the image is clear.");
+      }
+      
+      const analysis = await analyzeMedicalReport(extractedText, user, user.language);
       
       const reportData = {
         fileName: file.name,
@@ -40,9 +77,9 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
 
       await saveMedicalReport(user.id || 'mock-user-123', reportData);
       setResult(analysis);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to analyze the report. Please try again.");
+      setError(err.message || "Failed to analyze the report. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -58,8 +95,8 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
     >
       <header className="px-6 pt-12 pb-6 flex justify-between items-center bg-white/90 backdrop-blur-xl border-b border-rose-100/50">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Medical AI Analysis</h2>
-          <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">Upload reports for instant insights</p>
+          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">{t.medicalAI}</h2>
+          <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">{t.uploadReportDesc}</p>
         </div>
         <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-rose-100 hover:text-rose-600 transition-colors">
           <X size={20} />
@@ -72,9 +109,9 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
             <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-4 shadow-sm">
               <Upload size={28} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Upload Report</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">{t.uploadReport}</h3>
             <p className="text-sm font-medium text-slate-500 mb-6 max-w-[200px] leading-relaxed">
-              Upload your ultrasound, blood test, or prescription (PDF, JPG, PNG).
+              {t.uploadReportDesc}
             </p>
             
             <input 
@@ -84,12 +121,12 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
               accept=".pdf,image/*"
               onChange={handleFileChange}
             />
-            <label 
-              htmlFor="report-upload"
+            <Button 
+              onClick={() => document.getElementById('report-upload')?.click()}
               className="px-8 py-3.5 bg-rose-500 text-white rounded-full font-bold text-sm cursor-pointer hover:bg-rose-600 transition-colors shadow-md shadow-rose-500/20"
             >
-              Select File
-            </label>
+              {t.selectFile}
+            </Button>
 
             {file && (
               <div className="mt-6 p-4 bg-white rounded-[1.5rem] border border-rose-100 flex items-center gap-3 w-full text-left shadow-sm">
@@ -120,10 +157,10 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
             {isAnalyzing ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                Analyzing with AI...
+                {t.analyzeWithAI}
               </>
             ) : (
-              'Analyze Report'
+              t.analyzeReport
             )}
           </Button>
         )}
@@ -134,17 +171,48 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <Card className="p-6 bg-gradient-to-br from-purple-400 to-pink-400 text-white border-0 shadow-lg shadow-purple-500/20">
+            {result.hopefulMessage && (
+              <Card className="p-6 bg-emerald-50 border-emerald-100 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm border border-emerald-100">
+                    <Heart className="text-emerald-500 fill-emerald-500" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-emerald-900 font-extrabold text-lg tracking-tight mb-1">Message of Hope</h3>
+                    <p className="text-emerald-800 text-sm font-bold leading-relaxed italic">
+                      "{result.hopefulMessage}"
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            <Card className="p-6 bg-gradient-to-br from-purple-500 to-pink-500 text-white border-0 shadow-lg shadow-purple-500/20">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-extrabold tracking-tight">Analysis Complete</h3>
-                <Badge variant="default" className="bg-white/20 text-white border-0 shadow-sm backdrop-blur-md">AI Generated</Badge>
+                <h3 className="text-xl font-extrabold tracking-tight">AI Findings Summary</h3>
+                <Badge variant="default" className="bg-white/20 text-white border-0 shadow-sm backdrop-blur-md">{t.aiGenerated}</Badge>
               </div>
               <p className="text-sm font-bold text-white/95 leading-relaxed">
                 {result.summary}
               </p>
             </Card>
 
-            <Section title="Key Findings">
+            {result.vitalsRelation && (
+              <Section title={t.vitalsRelation}>
+                <Card className="p-5 bg-rose-50/50 border-rose-100/50 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm border border-rose-100">
+                      <AlertCircle className="text-rose-500" size={20} />
+                    </div>
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                      {result.vitalsRelation}
+                    </p>
+                  </div>
+                </Card>
+              </Section>
+            )}
+
+            <Section title={t.keyFindings}>
               <Card className="p-5 bg-white/90 backdrop-blur-xl border-rose-100/50 shadow-sm space-y-4">
                 {result.findings.map((finding: string, idx: number) => (
                   <div key={idx} className="flex items-start gap-3">
@@ -157,7 +225,7 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
               </Card>
             </Section>
 
-            <Section title="Recommendations">
+            <Section title={t.recommendations}>
               <Card className="p-5 bg-white/90 backdrop-blur-xl border-rose-100/50 shadow-sm space-y-3">
                 {result.recommendations.map((rec: string, idx: number) => (
                   <div key={idx} className="flex items-center gap-3 p-3.5 bg-rose-50/50 rounded-[1.5rem] border border-rose-100/50">
@@ -173,7 +241,7 @@ export function MedicalReportScreen({ user, t, onClose }: { user: any, t: any, o
               variant="outline"
               className="w-full py-4 rounded-[2rem] font-bold text-rose-600 border-rose-200 hover:bg-rose-50"
             >
-              Upload Another Report
+              {t.uploadAnother}
             </Button>
           </motion.div>
         )}

@@ -72,7 +72,7 @@ export function CommunityScreen({ t }: { t: any }) {
           style={{ opacity }}
           className="text-[10px] font-semibold uppercase tracking-widest text-slate-400"
         >
-          {isRefreshing ? "Refreshing..." : "Pull to refresh"}
+          {isRefreshing ? t.refreshing : t.pullToRefresh}
         </motion.span>
       </motion.div>
 

@@ -25,14 +25,14 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
 }
 
 #root {
   width: 100%;
   max-width: 480px;
-  height: 100vh;
+  height: 100dvh;
   background: var(--color-brand-warm-bg);
   position: relative;
   overflow-x: hidden;

@@ -31,9 +31,14 @@ export function InsightsScreen({ t }: { t: any }) {
       <motion.div variants={itemVariants}>
         <Section title={t.symptoms}>
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-            {["Nausea", "Fatigue", "Back Pain", "Swelling"].map((s, idx) => (
+            {[
+              { name: t.nausea, id: 'nausea' },
+              { name: t.fatigue, id: 'fatigue' },
+              { name: t.backPain, id: 'backPain' },
+              { name: t.swelling, id: 'swelling' }
+            ].map((s, idx) => (
               <motion.div
-                key={s}
+                key={s.id}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 + idx * 0.1 }}
@@ -42,7 +47,7 @@ export function InsightsScreen({ t }: { t: any }) {
                   <div className="w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 shadow-sm">
                     <Activity size={24} />
                   </div>
-                  <p className="text-xs font-bold text-slate-700">{s}</p>
+                  <p className="text-xs font-bold text-slate-700">{s.name}</p>
                 </Card>
               </motion.div>
             ))}
@@ -79,9 +84,9 @@ export function InsightsScreen({ t }: { t: any }) {
       <motion.div variants={itemVariants}>
         <Section title={t.bodySupport}>
           <Card className="p-5 bg-blue-50/80 backdrop-blur-xl border-blue-100 shadow-sm">
-            <h4 className="font-bold text-blue-900 mb-2 text-sm">Understanding Pain</h4>
+            <h4 className="font-bold text-blue-900 mb-2 text-sm">{t.understandingPain}</h4>
             <p className="text-xs text-blue-800/90 leading-relaxed font-bold">
-              Mild pain is normal during pregnancy as your body changes. Take rest and stay hydrated. If pain is sharp or persistent, consult your doctor.
+              {t.painDesc}
             </p>
           </Card>
         </Section>

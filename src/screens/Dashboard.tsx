@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Activity, AlertCircle, MessageCircle, CheckCircle2, Circle, Upload, FileText, ChevronRight, Download } from 'lucide-react';
+import { Heart, Activity, AlertCircle, MessageCircle, CheckCircle2, Circle, Upload, FileText, ChevronRight, Download, Droplets, Thermometer } from 'lucide-react';
 import { Card, Badge, Section } from '../components/UI';
 import { BABY_GROWTH, DIET_DATA, UserProfile } from '../data/mockData';
 import { getDailyChecklist, saveDailyChecklist } from '../services/firebaseService';
@@ -8,11 +8,23 @@ import { usePWA } from '../contexts/PWAContext';
 
 export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { user: UserProfile, t: any, onEmergency: () => void, onChat: () => void, onUploadReport: () => void }) {
   const { showInstallButton, installApp } = usePWA();
-  const growth = BABY_GROWTH[user.pregnancyMonth - 1] || BABY_GROWTH[0];
-  const diet = DIET_DATA.find(d => d.region === user.region) || DIET_DATA[0];
+  const growth = React.useMemo(() => BABY_GROWTH[user.pregnancyMonth - 1] || BABY_GROWTH[0], [user.pregnancyMonth]);
+  const diet = React.useMemo(() => DIET_DATA.find(d => d.region === user.region) || DIET_DATA[0], [user.region]);
   
   const [checklist, setChecklist] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [waterIntake, setWaterIntake] = useState(0);
+
+  const daysToGo = React.useMemo(() => {
+    if (user.dueDate) {
+      const due = new Date(user.dueDate);
+      const today = new Date();
+      const diffTime = due.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? diffDays : 0;
+    }
+    return 280 - (user.pregnancyMonth * 28);
+  }, [user.dueDate, user.pregnancyMonth]);
 
   useEffect(() => {
     const fetchChecklist = async () => {
@@ -51,27 +63,26 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
 
   return (
     <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="space-y-6 pb-24"
     >
       {/* 1. Baby Growth Hero Section */}
-      <motion.div variants={itemVariants}>
+      <div className="transform-gpu">
         <Card noHover className="bg-gradient-to-br from-rose-400 to-rose-500 text-white border-0 overflow-hidden relative p-8 shadow-lg shadow-rose-500/20">
           <div className="relative z-10">
             <div className="flex justify-between items-center mb-6">
               <Badge variant="default" className="bg-white/20 text-white backdrop-blur-md border border-white/20 shadow-sm">
-                Week {user.pregnancyMonth * 4}
+                {t.week} {user.pregnancyMonth * 4}
               </Badge>
-              <span className="text-xs font-bold text-white/80 uppercase tracking-wider">{280 - (user.pregnancyMonth * 28)} days to go</span>
+              <span className="text-xs font-bold text-white/80 uppercase tracking-wider">{daysToGo} {t.daysToGo}</span>
             </div>
             
             <div className="flex items-center gap-6 mb-6">
               <motion.div 
                 animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/30 shadow-inner"
               >
                 <span className="text-5xl drop-shadow-lg">{growth.emoji}</span>
@@ -80,7 +91,7 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
                 <h3 className="text-2xl font-extrabold leading-tight tracking-tight mb-1">
                   {t.babySize}
                 </h3>
-                <p className="text-white/90 font-bold text-sm">Size of a {growth.sizeComparison}</p>
+                <p className="text-white/90 font-bold text-sm">{t.sizeOfA} {growth.sizeComparison}</p>
               </div>
             </div>
 
@@ -89,41 +100,80 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
             </div>
           </div>
           
-          {/* Background decorative elements */}
-          <div className="absolute -right-12 -top-12 w-64 h-64 bg-white/10 rounded-full blur-3xl mix-blend-overlay" />
-          <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-orange-300/20 rounded-full blur-3xl mix-blend-overlay" />
+          {/* Background decorative elements - simplified for performance */}
+          <div className="absolute -right-12 -top-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         </Card>
-      </motion.div>
+      </div>
 
-      {showInstallButton && (
-        <motion.div variants={itemVariants}>
-          <Card 
-            onClick={installApp}
-            className="p-4 bg-rose-50/50 border-2 border-rose-200 border-dashed rounded-[2rem] flex items-center justify-between cursor-pointer hover:bg-rose-100/50 transition-all group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-rose-500/20 group-hover:scale-110 transition-transform">
-                <Download size={24} />
-              </div>
-              <div>
-                <h4 className="text-sm font-extrabold text-slate-800 tracking-tight">Install Little Heartbeat</h4>
-                <p className="text-[11px] text-slate-500 font-bold">Access your pregnancy companion faster</p>
-              </div>
+      {/* Water & Vitals Section */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-5 bg-white/90 backdrop-blur-xl border-rose-100/50 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500 border border-blue-100 shadow-sm">
+              <Droplets size={20} />
             </div>
-            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-rose-500 shadow-sm">
-              <ChevronRight size={18} />
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Water</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <span className="text-2xl font-extrabold text-slate-900">{waterIntake}</span>
+              <span className="text-xs font-bold text-slate-400 ml-1">/ 3L</span>
             </div>
-          </Card>
-        </motion.div>
-      )}
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setWaterIntake(Math.max(0, waterIntake - 0.25))}
+                className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors border border-slate-100"
+              >
+                -
+              </button>
+              <button 
+                onClick={() => setWaterIntake(Math.min(5, waterIntake + 0.25))}
+                className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white hover:bg-blue-600 transition-colors shadow-sm"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${(waterIntake / 3) * 100}%` }}
+              className="h-full bg-blue-400 rounded-full"
+            />
+          </div>
+        </Card>
+
+        <Card className="p-5 bg-white/90 backdrop-blur-xl border-rose-100/50 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 shadow-sm">
+              <Activity size={20} />
+            </div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Vitals</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-slate-400">BP</span>
+              <span className="text-xs font-extrabold text-slate-900">{user.bp || '120/80'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-slate-400">Sugar</span>
+              <span className="text-xs font-extrabold text-slate-900">{user.sugar || '90 mg/dL'}</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-rose-50 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Normal Range</span>
+          </div>
+        </Card>
+      </div>
 
       {/* 2. Today's Care Checklist */}
-      <motion.div variants={itemVariants}>
-        <Section title="Today's Care Plan">
+      <div>
+        <Section title={t.todayCarePlan}>
           <Card className="p-5 bg-white/90 backdrop-blur-xl shadow-sm border-rose-100/50">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                {completedTasks} of {checklist.length} completed
+                {completedTasks} of {checklist.length} {t.completedOf}
               </p>
               <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
                 <motion.div 
@@ -136,10 +186,8 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
             
             <div className="space-y-3">
               {checklist.map((task) => (
-                <motion.div 
+                <div 
                   key={task.id}
-                  whileHover={{ x: 4 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => toggleTask(task.id)}
                   className={`flex items-center gap-3 p-3.5 rounded-[1.5rem] cursor-pointer transition-colors ${task.completed ? 'bg-emerald-50/50 border border-emerald-100/50' : 'bg-slate-50 border border-slate-100/50 hover:bg-rose-50/50 hover:border-rose-100/50'}`}
                 >
@@ -151,42 +199,42 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
                   <span className={`text-sm font-bold transition-all ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
                     {task.title}
                   </span>
-                </motion.div>
+                </div>
               ))}
             </div>
           </Card>
         </Section>
-      </motion.div>
+      </div>
 
       {/* 3. AI Insights & Medical Report Card */}
-      <motion.div variants={itemVariants}>
-        <Section title="Medical AI Analysis">
+      <div>
+        <Section title={t.medicalAI}>
           <Card 
             className="p-0 overflow-hidden border-0 shadow-lg shadow-purple-500/20 bg-gradient-to-br from-purple-400 to-pink-400 cursor-pointer"
             onClick={onUploadReport}
           >
-            <motion.div whileHover={{ scale: 1.02 }} className="p-6 text-white relative z-10">
+            <div className="p-6 text-white relative z-10">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-14 h-14 bg-white/20 rounded-[1.5rem] flex items-center justify-center backdrop-blur-md border border-white/30 shadow-inner">
                   <FileText size={26} className="text-white drop-shadow-md" />
                 </div>
                 <Badge variant="default" className="bg-white/20 text-white border-0 shadow-sm backdrop-blur-md">New</Badge>
               </div>
-              <h4 className="text-lg font-bold tracking-tight mb-2">Analyze Medical Report</h4>
+              <h4 className="text-lg font-bold tracking-tight mb-2">{t.analyzeReport}</h4>
               <p className="text-sm text-white/80 font-medium leading-relaxed mb-4">
-                Upload your latest ultrasound or blood test for instant AI insights and risk assessment.
+                {t.uploadReportDesc}
               </p>
               <div className="flex items-center text-sm font-bold text-white gap-1">
-                Upload now <ChevronRight size={16} />
+                {t.uploadNow} <ChevronRight size={16} />
               </div>
-            </motion.div>
+            </div>
             <div className="absolute right-0 bottom-0 w-32 h-32 bg-white/10 rounded-tl-full blur-2xl" />
           </Card>
         </Section>
-      </motion.div>
+      </div>
 
       {/* 4. Quick Actions Grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card 
           className="p-5 flex flex-col items-center text-center gap-3 bg-white/90 backdrop-blur-xl border-rose-100/50 shadow-sm cursor-pointer hover:bg-rose-50/50"
           onClick={onChat}
@@ -195,8 +243,8 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
             <MessageCircle size={26} />
           </div>
           <div>
-            <h4 className="font-bold text-slate-900 text-sm tracking-tight">Ask AI Doctor</h4>
-            <p className="text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">24/7 Support</p>
+            <h4 className="font-bold text-slate-900 text-sm tracking-tight">{t.askAIDoctor}</h4>
+            <p className="text-[10px] text-slate-500 font-bold mt-0.5 uppercase tracking-wider">{t.support247}</p>
           </div>
         </Card>
 
@@ -208,19 +256,19 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
             <AlertCircle size={26} />
           </div>
           <div>
-            <h4 className="font-bold text-red-900 text-sm tracking-tight">Emergency</h4>
-            <p className="text-[10px] text-red-500 font-bold mt-0.5 uppercase tracking-wider">Get help now</p>
+            <h4 className="font-bold text-red-900 text-sm tracking-tight">{t.emergency}</h4>
+            <p className="text-[10px] text-red-500 font-bold mt-0.5 uppercase tracking-wider">{t.getHelpNow}</p>
           </div>
         </Card>
-      </motion.div>
+      </div>
 
       {/* 5. Diet & Nutrition (Lazy loaded feel) */}
-      <motion.div variants={itemVariants}>
+      <div>
         <Section title={t.diet}>
           <Card className="p-6 bg-white/90 backdrop-blur-xl shadow-sm border-rose-100/50">
             <div className="flex justify-between items-center mb-6">
               <h4 className="font-bold text-slate-900 text-sm tracking-tight">{user.region} Diet</h4>
-              <Badge variant="success" className="px-3 py-1 text-[10px] shadow-sm">Recommended</Badge>
+              <Badge variant="success" className="px-3 py-1 text-[10px] shadow-sm">{t.recommended}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-4">
@@ -246,7 +294,7 @@ export function Dashboard({ user, t, onEmergency, onChat, onUploadReport }: { us
             </div>
           </Card>
         </Section>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

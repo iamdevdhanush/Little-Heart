@@ -5,7 +5,7 @@ import { Button, Section, Input } from '../components/UI';
 import { UserProfile } from '../data/mockData';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
-import { signInWithGoogle, saveUserProfile, signUpWithEmail, signInWithEmail } from '../services/firebaseService';
+import { signUpWithEmail, signInWithEmail, saveUserProfile } from '../services/firebaseService';
 import { auth } from '../lib/firebase';
 
 export function AuthScreen({ onComplete }: { onComplete: () => void }) {
@@ -32,20 +32,6 @@ export function AuthScreen({ onComplete }: { onComplete: () => void }) {
     } catch (err: any) {
       console.error("Auth failed", err);
       setError(err.message || 'Authentication failed. Please check your credentials.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      await signInWithGoogle();
-      // The onAuthStateChanged listener in App.tsx will handle the redirect
-      // But we call onComplete just in case we are in mock mode
-      onComplete();
-    } catch (error) {
-      console.error("Sign in failed", error);
     } finally {
       setIsLoading(false);
     }
@@ -103,21 +89,6 @@ export function AuthScreen({ onComplete }: { onComplete: () => void }) {
           {isLoading ? <Loader2 className="animate-spin" size={20} /> : (isSignUp ? 'Create Account' : 'Sign In')}
         </Button>
 
-        <div className="flex items-center gap-2 my-4">
-          <div className="h-px bg-rose-100 flex-1" />
-          <span className="text-xs text-slate-400 font-bold uppercase">OR</span>
-          <div className="h-px bg-rose-100 flex-1" />
-        </div>
-
-        <Button 
-          variant="outline"
-          className="w-full py-4 text-base font-bold flex items-center justify-center gap-2 text-slate-700 border-rose-200 hover:bg-rose-50" 
-          onClick={handleSignIn}
-          disabled={isLoading}
-        >
-          Continue with Google
-        </Button>
-
         <p className="text-slate-600 text-sm font-bold pt-2">
           {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button onClick={() => setIsSignUp(!isSignUp)} className="text-rose-500 font-extrabold hover:underline">
@@ -140,7 +111,11 @@ export function OnboardingScreen({ onComplete }: { onComplete: (data: UserProfil
     age: 25,
     pregnancyMonth: 1,
     region: 'North India',
-    language: 'en'
+    language: 'en',
+    bp: '120/80',
+    sugar: '90',
+    medicalConditions: [],
+    allergies: []
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -156,7 +131,7 @@ export function OnboardingScreen({ onComplete }: { onComplete: (data: UserProfil
 
   const next = async () => {
     if (!validate()) return;
-    if (step < 4) {
+    if (step < 5) {
       setStep(step + 1);
     } else {
       setIsSaving(true);
@@ -192,7 +167,7 @@ export function OnboardingScreen({ onComplete }: { onComplete: (data: UserProfil
     >
       <div className="mb-12">
         <div className="flex gap-2 mb-8">
-          {[1, 2, 3, 4].map(s => (
+          {[1, 2, 3, 4, 5].map(s => (
             <div key={s} className={cn('h-1.5 flex-1 rounded-full transition-all duration-500', s <= step ? 'bg-rose-500' : 'bg-rose-100')} />
           ))}
         </div>
@@ -284,6 +259,24 @@ export function OnboardingScreen({ onComplete }: { onComplete: (data: UserProfil
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             <Section title="Medical Details">
               <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Blood Pressure</label>
+                    <Input 
+                      placeholder="e.g. 120/80" 
+                      value={formData.bp || ''} 
+                      onChange={(e: any) => setFormData({ ...formData, bp: e.target.value })} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Sugar Level</label>
+                    <Input 
+                      placeholder="e.g. 90 mg/dL" 
+                      value={formData.sugar || ''} 
+                      onChange={(e: any) => setFormData({ ...formData, sugar: e.target.value })} 
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Estimated Due Date</label>
                   <Input 
@@ -293,15 +286,15 @@ export function OnboardingScreen({ onComplete }: { onComplete: (data: UserProfil
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Medical Conditions (comma separated)</label>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Medical Conditions / Infections</label>
                   <Input 
-                    placeholder="e.g. Thyroid, Diabetes" 
+                    placeholder="e.g. Thyroid, Diabetes, UTI" 
                     value={formData.medicalConditions?.join(', ') || ''} 
                     onChange={(e: any) => setFormData({ ...formData, medicalConditions: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) })} 
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Allergies (comma separated)</label>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Other Problems / Allergies</label>
                   <Input 
                     placeholder="e.g. Peanuts, Penicillin" 
                     value={formData.allergies?.join(', ') || ''} 
@@ -312,11 +305,47 @@ export function OnboardingScreen({ onComplete }: { onComplete: (data: UserProfil
             </Section>
           </motion.div>
         )}
+
+        {step === 5 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <Section title="Preferred Language">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { code: 'en', name: 'English' },
+                  { code: 'hi', name: 'हिंदी' },
+                  { code: 'kn', name: 'ಕನ್ನಡ' },
+                  { code: 'bn', name: 'বাংলা' },
+                  { code: 'te', name: 'తెలుగు' },
+                  { code: 'mr', name: 'मराठी' },
+                  { code: 'ta', name: 'தமிழ்' },
+                  { code: 'gu', name: 'ગુજરાતી' },
+                  { code: 'ml', name: 'മലയാളം' },
+                  { code: 'or', name: 'ଓଡ଼ିଆ' },
+                  { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+                  { code: 'as', name: 'অসমীয়া' },
+                ].map(lang => (
+                  <button 
+                    key={lang.code}
+                    onClick={() => setFormData({ ...formData, language: lang.code as any })}
+                    className={cn(
+                      'py-4 px-3 rounded-[1.5rem] border-2 font-bold transition-all duration-300 text-sm', 
+                      formData.language === lang.code 
+                        ? 'border-rose-500 bg-rose-500 text-white shadow-md shadow-rose-500/20' 
+                        : 'border-rose-100 text-slate-500 hover:border-rose-200 hover:text-slate-700 bg-white/50'
+                    )}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
+            </Section>
+          </motion.div>
+        )}
       </div>
 
       <div className="pb-12 pt-6">
         <Button className="w-full py-4 text-base font-bold flex items-center justify-center gap-2" onClick={next} disabled={isSaving}>
-          {isSaving ? <Loader2 className="animate-spin" size={20} /> : (step === 4 ? 'Complete Profile' : 'Continue')}
+          {isSaving ? <Loader2 className="animate-spin" size={20} /> : (step === 5 ? 'Complete Profile' : 'Continue')}
         </Button>
       </div>
     </motion.div>

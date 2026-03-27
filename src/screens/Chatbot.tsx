@@ -11,7 +11,7 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
   const [messages, setMessages] = useState<any[]>([
     { 
       id: 1, 
-      text: user.language === 'hi' ? "नमस्ते! मैं आपकी लिटिल हार्टबीट एआई सहायक हूँ। मैं आपके स्वास्थ्य और बच्चे की सुरक्षा की निगरानी के लिए यहाँ हूँ। आज आप कैसा महसूस कर रही हैं?" : user.language === 'kn' ? "ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ ಲಿಟಲ್ ಹಾರ್ಟ್‌ಬೀಟ್ AI ಸಹಾಯಕ. ನಿಮ್ಮ ಆರೋಗ್ಯ ಮತ್ತು ಮಗುವಿನ ಸುರಕ್ಷತೆಯನ್ನು ನೋಡಿಕೊಳ್ಳಲು ನಾನಿದ್ದೇನೆ. ಇಂದು ನಿಮಗೆ ಹೇಗನಿಸುತ್ತಿದೆ?" : "Hi! I'm your Little Heartbeat AI Assistant. I'm here to monitor your health and baby's safety. How are you feeling today?", 
+      text: t.aiWelcome, 
       sender: 'ai' 
     }
   ]);
@@ -49,6 +49,12 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
+      // Automatically send the message after a short delay to allow the user to see the text
+      setTimeout(() => {
+        if (transcript.trim()) {
+          sendMessageWithInput(transcript);
+        }
+      }, 500);
     };
 
     recognition.onerror = (event: any) => {
@@ -63,21 +69,20 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
     recognition.start();
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || isTyping) return;
+  const sendMessageWithInput = async (textToSend: string) => {
+    if (!textToSend.trim() || isTyping) return;
     
-    const userMsg = { id: Date.now(), text: input, sender: 'user' };
+    const userMsg = { id: Date.now(), text: textToSend, sender: 'user' };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
-    // Prepare history for AI (last 10 messages)
     const history = messages.slice(-10).map(m => ({
       role: m.sender as 'user' | 'ai',
       text: m.text
     }));
 
-    const aiResponse = await getChatResponse(input, user, history, user.language);
+    const aiResponse = await getChatResponse(textToSend, user, history, user.language);
     
     const aiMsg = { 
       id: Date.now() + 1, 
@@ -99,6 +104,8 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
     }
   };
 
+  const sendMessage = () => sendMessageWithInput(input);
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
@@ -106,7 +113,7 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
       exit={{ opacity: 0, x: -20 }}
       className="flex flex-col h-full relative"
     >
-      <div className="flex-1 space-y-6 pb-32 overflow-y-auto no-scrollbar">
+      <div className="flex-1 space-y-6 pb-48 overflow-y-auto no-scrollbar">
         {messages.map(msg => (
           <motion.div 
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -200,22 +207,22 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-24 left-6 right-6 z-40">
-        <div className="bg-white/90 backdrop-blur-xl p-3 rounded-[2.5rem] shadow-float border border-slate-200/60 flex flex-col gap-2">
+      <div className="fixed bottom-32 left-6 right-6 z-[90] max-w-md mx-auto">
+        <div className="bg-white/95 backdrop-blur-xl p-3 rounded-[2.5rem] shadow-2xl border border-rose-100/50 flex flex-col gap-2">
           <motion.button 
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => setShowRiskForm(true)}
-            className="w-full py-2.5 rounded-full bg-blue-50 text-blue-600 font-semibold text-xs flex items-center justify-center gap-2 border border-blue-100 transition-colors hover:bg-blue-100"
+            className="w-full py-2.5 rounded-full bg-rose-50 text-rose-600 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-rose-100 transition-colors hover:bg-rose-100"
           >
-            <Activity size={14} /> Analyze My Health Risk
+            <Activity size={14} /> {t.analyzeHealthRisk}
           </motion.button>
           
           <ChatInput 
             value={input}
             onChange={(e: any) => setInput(e.target.value)}
             onSend={sendMessage}
-            placeholder={user.language === 'hi' ? "आप कैसा महसूस कर रही हैं?" : user.language === 'kn' ? "ನಿಮಗೆ ಹೇಗನಿಸುತ್ತಿದೆ?" : "How are you feeling?"}
+            placeholder={t.howFeeling}
             isTyping={isTyping}
             onVoiceClick={startListening}
             isListening={isListening}

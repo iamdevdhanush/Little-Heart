@@ -17,7 +17,7 @@ service cloud.firestore {
     //   - region: string (required)
     //   - bp: string (optional)
     //   - sugar: string (optional)
-    //   - language: string (required, enum: ["en", "hi", "kn"])
+    //   - language: string (required, enum: ["en", "hi", "kn", "bn", "te", "mr", "ta", "gu", "ml", "or", "pa", "as"])
     //   - dueDate: string (optional)
     //   - medicalConditions: list (optional)
     //   - allergies: list (optional)
@@ -81,7 +81,7 @@ service cloud.firestore {
              data.age is number && data.age >= 18 && data.age <= 60 &&
              data.pregnancyMonth is number && data.pregnancyMonth >= 1 && data.pregnancyMonth <= 10 &&
              data.region is string &&
-             data.language in ['en', 'hi', 'kn'];
+             data.language in ['en', 'hi', 'kn', 'bn', 'te', 'mr', 'ta', 'gu', 'ml', 'or', 'pa', 'as'];
     }
 
     function isValidReport(data) {
