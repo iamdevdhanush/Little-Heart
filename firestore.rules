@@ -1,0 +1,131 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches request.auth.uid)
+    // Fields:
+    //   - id: string (optional)
+    //   - name: string (required)
+    //   - age: number (required)
+    //   - pregnancyMonth: number (required)
+    //   - region: string (required)
+    //   - bp: string (optional)
+    //   - sugar: string (optional)
+    //   - language: string (required, enum: ["en", "hi", "kn"])
+    //   - dueDate: string (optional)
+    //   - medicalConditions: list (optional)
+    //   - allergies: list (optional)
+    //
+    // Subcollection: users/{userId}/reports
+    // Fields:
+    //   - type: string (required)
+    //   - result: string (required)
+    //   - risk: string (required, enum: ["Low", "Medium", "High"])
+    //   - summary: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Subcollection: users/{userId}/checklists
+    // Document ID: {date} (e.g., "2026-03-27")
+    // Fields:
+    //   - tasks: list (required)
+    //     - id: string
+    //     - title: string
+    //     - completed: bool
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "dhanushdprabhu18@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['name', 'age', 'pregnancyMonth', 'region', 'language']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.age is number && data.age >= 18 && data.age <= 60 &&
+             data.pregnancyMonth is number && data.pregnancyMonth >= 1 && data.pregnancyMonth <= 10 &&
+             data.region is string &&
+             data.language in ['en', 'hi', 'kn'];
+    }
+
+    function isValidReport(data) {
+      return hasRequiredFields(['type', 'result', 'risk', 'summary', 'createdAt']) &&
+             data.type is string && data.result is string &&
+             data.risk in ['Low', 'Medium', 'High'] &&
+             data.summary is string &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidChecklist(data) {
+      return hasRequiredFields(['tasks']) &&
+             data.tasks is list &&
+             data.tasks.size() <= 20;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+
+      match /reports/{reportId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidReport(request.resource.data);
+        allow update: if isOwner(userId) && isValidReport(request.resource.data);
+        allow delete: if isAdmin();
+      }
+
+      match /checklists/{date} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidChecklist(request.resource.data);
+        allow update: if isOwner(userId) && isValidChecklist(request.resource.data);
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

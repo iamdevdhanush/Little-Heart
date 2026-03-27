@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information for pregnancy tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "integer" },
+        "pregnancyMonth": { "type": "integer" },
+        "region": { "type": "string" },
+        "bp": { "type": "string" },
+        "sugar": { "type": "string" },
+        "language": { "type": "string", "enum": ["en", "hi", "kn"] },
+        "dueDate": { "type": "string" },
+        "medicalConditions": { "type": "array", "items": { "type": "string" } },
+        "allergies": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "age", "pregnancyMonth", "region", "language"]
+    },
+    "MedicalReport": {
+      "title": "MedicalReport",
+      "description": "AI analysis of medical reports",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "result": { "type": "string" },
+        "risk": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "summary": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "result", "risk", "summary"]
+    },
+    "DailyChecklist": {
+      "title": "DailyChecklist",
+      "description": "Daily tasks for the user",
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "completed": { "type": "boolean" }
+            },
+            "required": ["id", "title", "completed"]
+          }
+        }
+      },
+      "required": ["tasks"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Main user profile document"
+    },
+    "/users/{userId}/reports/{reportId}": {
+      "schema": "MedicalReport",
+      "description": "Medical reports for a specific user"
+    },
+    "/users/{userId}/checklists/{date}": {
+      "schema": "DailyChecklist",
+      "description": "Daily checklist for a specific user and date"
+    }
+  }
+}

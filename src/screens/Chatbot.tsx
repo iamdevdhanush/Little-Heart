@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, Send, Plus, Activity, ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -11,13 +11,57 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
   const [messages, setMessages] = useState<any[]>([
     { 
       id: 1, 
-      text: "Hi! I'm your Little Heartbeat AI Assistant. I'm here to monitor your health and baby's safety. How are you feeling today?", 
+      text: user.language === 'hi' ? "नमस्ते! मैं आपकी लिटिल हार्टबीट एआई सहायक हूँ। मैं आपके स्वास्थ्य और बच्चे की सुरक्षा की निगरानी के लिए यहाँ हूँ। आज आप कैसा महसूस कर रही हैं?" : user.language === 'kn' ? "ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ ಲಿಟಲ್ ಹಾರ್ಟ್‌ಬೀಟ್ AI ಸಹಾಯಕ. ನಿಮ್ಮ ಆರೋಗ್ಯ ಮತ್ತು ಮಗುವಿನ ಸುರಕ್ಷತೆಯನ್ನು ನೋಡಿಕೊಳ್ಳಲು ನಾನಿದ್ದೇನೆ. ಇಂದು ನಿಮಗೆ ಹೇಗನಿಸುತ್ತಿದೆ?" : "Hi! I'm your Little Heartbeat AI Assistant. I'm here to monitor your health and baby's safety. How are you feeling today?", 
       sender: 'ai' 
     }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showRiskForm, setShowRiskForm] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert("Your browser doesn't support speech recognition.");
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.lang = user.language === 'hi' ? 'hi-IN' : user.language === 'kn' ? 'kn-IN' : 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isTyping) return;
@@ -33,7 +77,7 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
       text: m.text
     }));
 
-    const aiResponse = await getChatResponse(input, user, history);
+    const aiResponse = await getChatResponse(input, user, history, user.language);
     
     const aiMsg = { 
       id: Date.now() + 1, 
@@ -60,9 +104,9 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col h-full"
+      className="flex flex-col h-full relative"
     >
-      <div className="flex-1 space-y-6 pb-6">
+      <div className="flex-1 space-y-6 pb-32 overflow-y-auto no-scrollbar">
         {messages.map(msg => (
           <motion.div 
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -71,29 +115,29 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
             className={cn('flex', msg.sender === 'user' ? 'justify-end' : 'justify-start')}
           >
             <div className={cn(
-              'max-w-[85%] p-5 rounded-[2rem] shadow-premium transition-all duration-500',
+              'max-w-[85%] p-5 rounded-[2rem] shadow-sm transition-all duration-500',
               msg.sender === 'user' 
-                ? 'pink-gradient text-white rounded-tr-none' 
-                : 'bg-white text-slate-700 rounded-tl-none border border-slate-50'
+                ? 'bg-rose-500 text-white rounded-tr-md shadow-rose-500/20' 
+                : 'bg-white/90 backdrop-blur-md text-slate-700 rounded-tl-md border border-rose-100/50'
             )}>
-              <p className="text-[13px] font-medium leading-relaxed tracking-tight">{msg.text}</p>
+              <p className="text-[14px] font-bold leading-relaxed tracking-wide">{msg.text}</p>
               
               {msg.internal_link && (
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => onNavigate(msg.internal_link.screen)}
-                  className="mt-5 w-full py-3 px-4 rounded-2xl bg-brand-pink/5 text-brand-pink text-[10px] font-black uppercase tracking-widest border border-brand-pink/10 flex items-center justify-center gap-2"
+                  className="mt-4 w-full py-3 px-4 rounded-[1.5rem] bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100/50 flex items-center justify-center gap-2 shadow-sm"
                 >
-                  <Plus size={12} /> {msg.internal_link.label}
+                  <Plus size={16} /> {msg.internal_link.label}
                 </motion.button>
               )}
 
               {msg.risk && (
                 <div className={cn(
-                  "mt-6 p-5 rounded-3xl border border-white/40 shadow-inner-soft",
-                  msg.risk === 'High' ? 'bg-red-50/50' : 
-                  msg.risk === 'Medium' ? 'bg-yellow-50/50' : 'bg-green-50/50'
+                  "mt-5 p-5 rounded-[1.5rem] border",
+                  msg.risk === 'High' ? 'bg-red-50/80 border-red-100' : 
+                  msg.risk === 'Medium' ? 'bg-amber-50/80 border-amber-100' : 'bg-emerald-50/80 border-emerald-100'
                 )}>
                   <div className="flex justify-between items-center mb-4">
                     <Badge variant={msg.risk === 'High' ? 'danger' : msg.risk === 'Medium' ? 'warning' : 'success'}>
@@ -103,19 +147,19 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
                   
                   <ConfidenceIndicator level={msg.confidence} className="mb-5" />
                   
-                  <p className="text-xs font-bold text-slate-800 mb-4 leading-snug">{msg.reason}</p>
+                  <p className="text-sm font-bold text-slate-800 mb-4 leading-snug">{msg.reason}</p>
                   
-                  <div className="bg-white/80 p-4 rounded-2xl border border-white/60 mb-4 shadow-soft">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Priority Action:</p>
-                    <p className="text-[11px] font-black text-brand-pink leading-tight">{msg.priority_action}</p>
+                  <div className="bg-white/90 p-4 rounded-[1.25rem] border border-slate-100/50 mb-4 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Priority Action:</p>
+                    <p className="text-xs font-bold text-red-500 leading-tight">{msg.priority_action}</p>
                   </div>
 
                   {msg.steps && msg.steps.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Next Steps:</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Next Steps:</p>
                       {msg.steps.map((s: string, i: number) => (
-                        <p key={i} className="text-[11px] font-medium text-slate-500 flex items-start gap-2 leading-relaxed">
-                          <span className="w-1 h-1 rounded-full bg-slate-300 mt-1.5 shrink-0" /> {s}
+                        <p key={i} className="text-xs font-bold text-slate-600 flex items-start gap-2.5 leading-relaxed">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" /> {s}
                         </p>
                       ))}
                     </div>
@@ -127,15 +171,16 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
         ))}
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-white px-6 py-4 rounded-[1.5rem] rounded-tl-none border border-slate-50 shadow-soft">
+            <div className="bg-white/90 backdrop-blur-md px-6 py-5 rounded-[2rem] rounded-tl-md border border-rose-100/50 shadow-sm">
               <div className="flex gap-2">
-                <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-brand-pink/40 rounded-full" />
-                <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-brand-pink/40 rounded-full" />
-                <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-brand-pink/40 rounded-full" />
+                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-rose-300 rounded-full" />
+                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-rose-300 rounded-full" />
+                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-rose-300 rounded-full" />
               </div>
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       <AnimatePresence>
@@ -147,31 +192,35 @@ export function Chatbot({ user, t, onEmergency, onNavigate }: { user: UserProfil
             className="fixed inset-0 z-[60] bg-white p-6 overflow-y-auto"
           >
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-3xl font-black text-slate-800 tracking-tight">Health Check</h3>
-              <button onClick={() => setShowRiskForm(false)} className="p-3 bg-slate-50 rounded-2xl text-slate-400 transition-transform active:scale-90"><ArrowLeft size={20} /></button>
+              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Health Check</h3>
+              <button onClick={() => setShowRiskForm(false)} className="p-2.5 bg-slate-100 rounded-full text-slate-500 transition-transform active:scale-95"><ArrowLeft size={20} /></button>
             </div>
             <RiskAnalysis user={user} t={t} onEmergency={onEmergency} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="sticky bottom-0 bg-white/60 backdrop-blur-2xl pt-4 pb-6 space-y-4">
-        <motion.button 
-          whileHover={{ scale: 1.01, y: -2 }}
-          whileTap={{ scale: 0.99 }}
-          onClick={() => setShowRiskForm(true)}
-          className="w-full py-4 rounded-2xl bg-brand-blue/10 text-brand-blue-dark font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border border-brand-blue/20"
-        >
-          <Activity size={14} /> Analyze My Health Risk
-        </motion.button>
-        
-        <ChatInput 
-          value={input}
-          onChange={(e: any) => setInput(e.target.value)}
-          onSend={sendMessage}
-          placeholder="How are you feeling?"
-          isTyping={isTyping}
-        />
+      <div className="fixed bottom-24 left-6 right-6 z-40">
+        <div className="bg-white/90 backdrop-blur-xl p-3 rounded-[2.5rem] shadow-float border border-slate-200/60 flex flex-col gap-2">
+          <motion.button 
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => setShowRiskForm(true)}
+            className="w-full py-2.5 rounded-full bg-blue-50 text-blue-600 font-semibold text-xs flex items-center justify-center gap-2 border border-blue-100 transition-colors hover:bg-blue-100"
+          >
+            <Activity size={14} /> Analyze My Health Risk
+          </motion.button>
+          
+          <ChatInput 
+            value={input}
+            onChange={(e: any) => setInput(e.target.value)}
+            onSend={sendMessage}
+            placeholder={user.language === 'hi' ? "आप कैसा महसूस कर रही हैं?" : user.language === 'kn' ? "ನಿಮಗೆ ಹೇಗನಿಸುತ್ತಿದೆ?" : "How are you feeling?"}
+            isTyping={isTyping}
+            onVoiceClick={startListening}
+            isListening={isListening}
+          />
+        </div>
       </div>
     </motion.div>
   );

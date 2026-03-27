@@ -39,12 +39,12 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
   };
 
   return (
-    <div className="space-y-8">
-      <Card className="p-8">
-        <h3 className="text-2xl font-black text-slate-800 mb-8 tracking-tight">Health Checkup</h3>
-        <div className="space-y-8">
+    <div className="space-y-6">
+      <Card className="p-6">
+        <h3 className="text-2xl font-bold text-slate-900 mb-6 tracking-tight">Health Checkup</h3>
+        <div className="space-y-6">
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Blood Pressure</label>
+            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-2 px-1">Blood Pressure</label>
             <Input 
               placeholder="120/80" 
               value={data.bp} 
@@ -53,7 +53,7 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
             />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Sugar Level (mg/dL)</label>
+            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-2 px-1">Sugar Level (mg/dL)</label>
             <Input 
               placeholder="95" 
               value={data.sugar} 
@@ -62,7 +62,7 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
             />
           </div>
           <Section title="Symptoms">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {symptomsList.map(s => (
                 <button 
                   key={s}
@@ -71,10 +71,10 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
                     setData({ ...data, symptoms: next });
                   }}
                   className={cn(
-                    'px-5 py-2.5 rounded-full text-xs font-bold border transition-all duration-300',
+                    'px-4 py-2 rounded-full text-xs font-semibold border transition-all duration-300',
                     data.symptoms.includes(s) 
-                      ? 'bg-brand-pink text-white border-brand-pink shadow-lg shadow-brand-pink/20 scale-105' 
-                      : 'bg-white text-slate-400 border-slate-100'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                   )}
                 >
                   {s}
@@ -82,7 +82,7 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
               ))}
             </div>
           </Section>
-          <Button className="w-full py-5 mt-6 text-lg" onClick={handleAnalyze} disabled={loading}>
+          <Button className="w-full py-4 mt-4 text-base font-semibold" onClick={handleAnalyze} disabled={loading}>
             {loading ? 'Analyzing...' : 'Run Risk Analysis'}
           </Button>
         </div>
@@ -91,17 +91,17 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
       {result && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
           <Card className={cn(
-            'border-2 p-8',
-            result.risk === 'High' ? 'border-red-100 bg-red-50/30' : 
-            result.risk === 'Medium' ? 'border-yellow-100 bg-yellow-50/30' : 'border-green-100 bg-green-50/30'
+            'border-2 p-6',
+            result.risk === 'High' ? 'border-rose-100 bg-rose-50/30' : 
+            result.risk === 'Medium' ? 'border-amber-100 bg-amber-50/30' : 'border-emerald-100 bg-emerald-50/30'
           )}>
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-5">
               <div className={cn(
-                'w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg',
-                result.risk === 'High' ? 'bg-red-500 shadow-red-200' : 
-                result.risk === 'Medium' ? 'bg-yellow-500 shadow-yellow-200' : 'bg-green-500 shadow-green-200'
+                'w-12 h-12 rounded-full flex items-center justify-center shadow-sm',
+                result.risk === 'High' ? 'bg-rose-500 text-white' : 
+                result.risk === 'Medium' ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
               )}>
-                <Activity size={24} className="text-white" />
+                <Activity size={24} />
               </div>
               <div>
                 <Badge variant={result.risk === 'High' ? 'danger' : result.risk === 'Medium' ? 'warning' : 'success'}>
@@ -109,24 +109,24 @@ export function RiskAnalysis({ user, t, onEmergency }: { user: UserProfile, t: a
                 </Badge>
               </div>
             </div>
-            <p className="text-sm font-bold text-slate-700 mb-6 leading-relaxed">{result.reason}</p>
-            <div className="space-y-4 mb-8">
+            <p className="text-sm font-medium text-slate-700 mb-5 leading-relaxed">{result.reason}</p>
+            <div className="space-y-4 mb-6">
               <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-black text-brand-pink uppercase tracking-widest mb-1">Priority Action:</p>
-                <p className="text-sm font-black text-slate-800">{result.priority_action}</p>
+                <p className="text-[11px] font-semibold text-rose-500 uppercase tracking-widest mb-1">Priority Action:</p>
+                <p className="text-sm font-bold text-slate-900">{result.priority_action}</p>
               </div>
 
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recommended Actions:</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Recommended Actions:</p>
               {result.steps.map((s: string, i: number) => (
-                <div key={i} className="flex items-start gap-3 text-sm font-bold text-slate-500">
-                  <div className="w-2 h-2 rounded-full bg-slate-300 mt-1.5 shrink-0" />
+                <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 shrink-0" />
                   {s}
                 </div>
               ))}
             </div>
-            <div className="border-t border-slate-100 pt-4 space-y-4">
+            <div className="border-t border-slate-100 pt-4 space-y-3">
               <ConfidenceIndicator level={result.confidence} />
-              <p className="text-[10px] text-slate-300 font-bold italic">This is not a medical diagnosis.</p>
+              <p className="text-[10px] text-slate-400 font-medium italic">This is not a medical diagnosis.</p>
             </div>
           </Card>
         </motion.div>

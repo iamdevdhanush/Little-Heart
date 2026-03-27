@@ -15,8 +15,56 @@ export interface AIResponse {
   };
 }
 
-export async function getChatResponse(message: string, profile: any, history: { role: 'user' | 'ai', text: string }[] = []): Promise<AIResponse> {
+// Translation Service using Gemini
+export async function translateText(text: string, targetLangCode: string): Promise<string> {
+  if (!text) return text;
+  const langMap: Record<string, string> = { hi: 'Hindi', kn: 'Kannada', en: 'English' };
+  const targetLang = langMap[targetLangCode] || 'English';
+  
   try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Translate the following text to ${targetLang}. Return ONLY the translation, without any quotes or extra text.\n\nText: "${text}"`
+    });
+    return response.text?.trim() || text;
+  } catch (error) {
+    console.error("Translation error:", error);
+    return text;
+  }
+}
+
+export async function translateResponse(data: any, targetLangCode: string): Promise<any> {
+  if (targetLangCode === 'en') return data;
+  const langMap: Record<string, string> = { hi: 'Hindi', kn: 'Kannada', en: 'English' };
+  const targetLang = langMap[targetLangCode] || 'English';
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Translate the string values of the following JSON object to ${targetLang}. 
+      Keep the JSON keys exactly the same. 
+      DO NOT translate the values for "risk", "confidence", or "internal_link.screen".
+      Return ONLY valid JSON.
+      
+      JSON:
+      ${JSON.stringify(data)}`,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Response translation error:", error);
+    return data;
+  }
+}
+
+export async function getChatResponse(message: string, profile: any, history: { role: 'user' | 'ai', text: string }[] = [], language: string = 'en'): Promise<AIResponse> {
+  try {
+    // 1. Translate user input to English for AI processing
+    const englishMessage = language !== 'en' ? await translateText(message, 'en') : message;
+
+    // 2. Process with AI in English
     const historyContext = history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n');
     
     const response = await ai.models.generateContent({
@@ -27,7 +75,7 @@ export async function getChatResponse(message: string, profile: any, history: { 
         CONVERSATION HISTORY:
         ${historyContext}
         
-        Current User Message: ${message}
+        Current User Message: ${englishMessage}
         
         You are "Little Heartbeat", a senior AI maternal health assistant.
         Your primary goal is real-time maternal risk assessment and providing actionable, educational support.
@@ -39,6 +87,7 @@ export async function getChatResponse(message: string, profile: any, history: { 
         - If a risk is identified, provide clear, non-scary steps to manage it.
         - Use VERY SIMPLE ENGLISH. NO medical jargon.
         - Be calm, supportive, and clear.
+        - Use Google Search to verify any medical information or provide the latest health guidelines.
         
         INTERNAL LINKS:
         You can suggest the user visit a specific section of the app if relevant.
@@ -64,15 +113,21 @@ export async function getChatResponse(message: string, profile: any, history: { 
         If the user mentions severe pain, heavy bleeding, no baby movement, or very high BP/Sugar, set risk to "High" and priority_action to "Go to the nearest hospital immediately".
       `,
       config: {
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }]
       }
     });
 
-    return JSON.parse(response.text || "{}");
+    const aiData = JSON.parse(response.text || "{}");
+
+    // 3. Translate the AI's response back to the user's selected language
+    const translatedData = language !== 'en' ? await translateResponse(aiData, language) : aiData;
+
+    return translatedData;
   } catch (error) {
     console.error("AI Error:", error);
     return {
-      text: "I'm sorry, I'm having trouble connecting. Please try again or seek medical advice if you're worried.",
+      text: language === 'hi' ? "मुझे खेद है, मुझे कनेक्ट करने में समस्या हो रही है। कृपया पुनः प्रयास करें।" : language === 'kn' ? "ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕಿಸುವಲ್ಲಿ ಸಮಸ್ಯೆ ಇದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." : "I'm sorry, I'm having trouble connecting. Please try again or seek medical advice if you're worried.",
       risk: "Medium",
       reason: "Connection issues prevented full analysis",
       priority_action: "Monitor your symptoms closely",
@@ -123,3 +178,47 @@ export async function analyzeRisk(healthData: any, profile: any): Promise<AIResp
     };
   }
 }
+
+export async function analyzeMedicalReport(extractedText: string, language: string = 'en'): Promise<any> {
+  try {
+    const englishText = language !== 'en' ? await translateText(extractedText, 'en') : extractedText;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `
+        Analyze the following medical report text for a pregnant patient.
+        
+        Report Text:
+        "${englishText}"
+        
+        Provide a structured, easy-to-understand summary of the findings.
+        Do not use overly complex medical jargon. Explain things simply.
+        
+        CRITICAL: Your response must be a JSON object with the following structure:
+        {
+          "summary": "A 2-3 sentence simple summary of the overall report status.",
+          "findings": ["Key finding 1 (e.g., Blood pressure is normal)", "Key finding 2"],
+          "recommendations": ["Actionable recommendation 1", "Actionable recommendation 2"],
+          "riskLevel": "Low" | "Medium" | "High"
+        }
+      `,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    const aiData = JSON.parse(response.text || "{}");
+    
+    // Translate back if needed
+    if (language !== 'en') {
+      const translated = await translateResponse(aiData, language);
+      return translated;
+    }
+
+    return aiData;
+  } catch (error) {
+    console.error("Report Analysis Error:", error);
+    throw new Error("Failed to analyze report");
+  }
+}
+

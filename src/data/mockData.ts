@@ -1,11 +1,12 @@
 export interface UserProfile {
+  id?: string;
   name: string;
   age: number;
   pregnancyMonth: number;
   region: string;
   bp?: string;
   sugar?: string;
-  language: 'en' | 'hi';
+  language: 'en' | 'hi' | 'kn';
   dueDate?: string;
   medicalConditions?: string[];
   allergies?: string[];
@@ -157,5 +158,30 @@ export const TRANSLATIONS = {
     bodySupport: "शरीर सहायता",
     care: "देखभाल",
     language: "भाषा"
+  },
+  kn: {
+    dashboard: "ಮುಖಪುಟ",
+    insights: "ಒಳನೋಟಗಳು",
+    community: "ಸಮುದಾಯ",
+    chat: "ಸಹಾಯಕ",
+    profile: "ಪ್ರೊಫೈಲ್",
+    babySize: "ನಿಮ್ಮ ಮಗುವಿನ ಗಾತ್ರವು ಸುಮಾರು",
+    insight: "ಇಂದಿನ ಒಳನೋಟ",
+    diet: "ಪ್ರಾದೇಶಿಕ ಆಹಾರ",
+    eat: "ತಿನ್ನಬೇಕಾದ ಆಹಾರಗಳು",
+    avoid: "ತಪ್ಪಿಸಬೇಕಾದ ಆಹಾರಗಳು",
+    emergencyHelp: "ತುರ್ತು ಸಹಾಯ",
+    emergencyWarning: "ಹೆಚ್ಚಿನ ಅಪಾಯದ ಎಚ್ಚರಿಕೆ",
+    emergencyAction: "ತಕ್ಷಣ ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗೆ ಹೋಗಿ",
+    callHospital: "ಆಸ್ಪತ್ರೆಗೆ ಕರೆ ಮಾಡಿ",
+    riskSummary: "ಅಪಾಯದ ಸಾರಾಂಶ",
+    latestResult: "ಇತ್ತೀಚಿನ AI ಫಲಿತಾಂಶ",
+    newPost: "ಹೊಸ ಪೋಸ್ಟ್",
+    shareExperience: "ನಿಮ್ಮ ಅನುಭವವನ್ನು ಹಂಚಿಕೊಳ್ಳಿ...",
+    symptoms: "ರೋಗಲಕ್ಷಣಗಳು",
+    education: "ಶಿಕ್ಷಣ",
+    bodySupport: "ದೇಹದ ಬೆಂಬಲ",
+    care: "ಆರೈಕೆ",
+    language: "ಭಾಷೆ"
   }
 };

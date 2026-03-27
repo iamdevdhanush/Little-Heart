@@ -39,7 +39,7 @@ export function CommunityScreen({ t }: { t: any }) {
       particleCount: 40,
       spread: 70,
       origin: { y: 0.1 },
-      colors: ['#FF6B9E', '#FFB6C1', '#87CEEB']
+      colors: ['#0F172A', '#E11D48', '#38BDF8']
     });
   }, [y]);
 
@@ -65,12 +65,12 @@ export function CommunityScreen({ t }: { t: any }) {
         style={{ y, opacity, scale, rotate }}
         className="absolute top-0 left-0 right-0 flex flex-col justify-center items-center h-24 z-0 pointer-events-none"
       >
-        <div className="w-12 h-12 rounded-full bg-white shadow-premium flex items-center justify-center text-brand-pink border border-slate-50 mb-2">
-          <RefreshCw size={22} className={isRefreshing ? "animate-spin" : ""} />
+        <div className="w-10 h-10 rounded-full bg-white shadow-stripe flex items-center justify-center text-slate-900 border border-slate-200/60 mb-2">
+          <RefreshCw size={18} className={isRefreshing ? "animate-spin" : ""} />
         </div>
         <motion.span 
           style={{ opacity }}
-          className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
+          className="text-[10px] font-semibold uppercase tracking-widest text-slate-400"
         >
           {isRefreshing ? "Refreshing..." : "Pull to refresh"}
         </motion.span>
@@ -95,42 +95,42 @@ export function CommunityScreen({ t }: { t: any }) {
         className="space-y-6 pb-10 relative z-10 bg-transparent"
       >
         <div className="flex justify-between items-center bg-transparent">
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight">{t.community}</h3>
+          <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">{t.community}</h3>
           <motion.button 
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-2xl pink-gradient text-white flex items-center justify-center shadow-lg shadow-brand-pink/20"
+            whileHover={{ scale: 1.05, rotate: 90 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20 hover:bg-rose-600 transition-colors"
           >
             <Plus size={24} />
           </motion.button>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <AnimatePresence mode="popLayout">
             {posts.map((post) => (
               <motion.div 
                 key={post.id} 
                 variants={itemVariants}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                exit={{ opacity: 0, scale: 0.95 }}
               >
-                <Card className="p-6 space-y-4">
+                <Card className="p-5 space-y-4 bg-white/90 backdrop-blur-xl border-rose-100/50 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <img src={post.avatar} alt={post.author} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={post.avatar} alt={post.author} className="w-12 h-12 rounded-full object-cover border-2 border-rose-100 shadow-sm" referrerPolicy="no-referrer" />
                     <div>
-                      <h4 className="font-black text-slate-800 text-sm">{post.author}</h4>
+                      <h4 className="font-bold text-slate-900 text-sm">{post.author}</h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{post.time}</p>
                     </div>
                   </div>
-                  <p className="text-sm text-slate-600 leading-relaxed">{post.content}</p>
-                  <div className="flex gap-6 pt-2 border-t border-slate-50">
-                    <button className="flex items-center gap-2 text-slate-400 hover:text-brand-pink transition-colors">
+                  <p className="text-sm text-slate-700 leading-relaxed font-bold">{post.content}</p>
+                  <div className="flex gap-6 pt-3 border-t border-rose-100/50">
+                    <button className="flex items-center gap-1.5 text-slate-400 hover:text-rose-500 transition-colors">
                       <Heart size={18} className="fill-none" />
                       <span className="text-xs font-bold">{post.likes}</span>
                     </button>
-                    <button className="flex items-center gap-2 text-slate-400 hover:text-brand-blue transition-colors">
+                    <button className="flex items-center gap-1.5 text-slate-400 hover:text-blue-500 transition-colors">
                       <MessageCircle size={18} />
                       <span className="text-xs font-bold">{post.comments}</span>
                     </button>
